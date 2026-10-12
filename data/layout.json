@@ -1,6 +1,6 @@
 {
   "theme": {
-    "siteTitle": "PopHealth",
+    "siteTitle": "Population Health",
     "background": "#f5f7fb",
     "text": "#1f2937",
     "accent": "#2563eb",
@@ -38,6 +38,18 @@
       }
     },
     {
+      "id": "b4",
+      "type": "card",
+      "props": {
+        "title": "Resources",
+        "body": "Guides, documents and helpful links.",
+        "image": "",
+        "background": "#ffffff",
+        "width": 4,
+        "padding": 24
+      }
+    },
+    {
       "id": "b3",
       "type": "card",
       "props": {
@@ -50,15 +62,25 @@
       }
     },
     {
-      "id": "b4",
-      "type": "card",
+      "id": "b9gu3c5b",
+      "type": "heading",
       "props": {
-        "title": "Resources",
-        "body": "Guides, documents and helpful links.",
-        "image": "",
-        "background": "#ffffff",
-        "width": 4,
-        "padding": 24
+        "text": "Approval Templates",
+        "level": "h2",
+        "align": "center",
+        "color": "",
+        "width": 12,
+        "padding": 8
+      }
+    },
+    {
+      "id": "bcrs9jtr",
+      "type": "divider",
+      "props": {
+        "color": "#d1d5db",
+        "thickness": 1,
+        "width": 12,
+        "padding": 8
       }
     },
     {
