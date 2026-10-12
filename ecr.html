@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergency Change Template</title>
+  <link rel="stylesheet" href="css/style.css?v=3">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <div class="site-title" id="siteTitle">Emergency Change</div>
+      <span class="user-chip" id="userChip"></span>
+      <a class="btn" href="main.html">Home</a>
+      <a class="btn btn-primary" id="adminBtn" href="admin.html" hidden>Admin Dashboard</a>
+      <button class="btn" id="logoutBtn">Log out</button>
+    </div>
+  </header>
+
+  <main class="page ecr">
+    <h1>Emergency Change Template</h1>
+    <p class="muted">Fill in the form, then click <b>Create template</b>. The email is copied with formatting, so you can paste it straight into Outlook (Ctrl+V).</p>
+
+    <table class="ecr-table">
+      <thead><tr><th>Information</th><th>Description</th></tr></thead>
+      <tbody id="infoRows"></tbody>
+    </table>
+
+    <h3 class="ecr-sub">Deployment Approval:</h3>
+    <table class="ecr-table ecr-approval">
+      <thead><tr><th>Name</th><th>Division/Synapxe</th><th>Status of Approval</th><th>Email Attachment</th></tr></thead>
+      <tbody id="approvalRows"></tbody>
+    </table>
+
+    <div class="error" id="ecrError"></div>
+    <div class="props-actions">
+      <button class="btn btn-primary" id="createBtn">Create template</button>
+      <button class="btn" id="copySubjectBtn">Copy subject</button>
+      <button class="btn btn-danger" id="clearBtn">Clear form</button>
+    </div>
+
+    <section id="previewWrap" hidden>
+      <div class="ecr-preview-head">
+        <h3 class="ecr-sub">Email preview</h3>
+        <button class="btn btn-sm" id="copyBtn">Copy email again</button>
+      </div>
+      <div class="ecr-preview" id="preview"></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/common.js?v=2"></script>
+  <script src="js/ecr.js?v=1"></script>
+</body>
+</html>

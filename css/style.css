@@ -197,3 +197,21 @@ body.admin { background: #f3f4f6; font-family: var(--ui-font); color: #111827; h
 @media (max-width: 1000px) {
   .designer { grid-template-columns: 160px 1fr 260px; }
 }
+
+/* ---------- emergency change template ---------- */
+.ecr { font-family: var(--ui-font); max-width: 980px; }
+.ecr h1 { margin: 8px 0 4px; font-size: 24px; }
+.ecr > p { margin: 0 0 16px; }
+.ecr-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; margin-bottom: 8px; }
+.ecr-table th, .ecr-table td { border: 1px solid #1f2937; padding: 4px 6px; vertical-align: middle; }
+.ecr-table thead th { background: #5b9bd5; text-align: center; }
+.ecr-table tbody th { background: #5b9bd5; text-align: left; width: 280px; font-weight: 700; }
+.ecr-table tbody td { background: #e9eef7; }
+.ecr-table tbody td.shade { background: #d0dcef; }
+.ecr-table input, .ecr-table textarea, .ecr-table select { border-radius: 4px; padding: 5px 7px; min-height: 0; }
+.ecr-approval thead th { background: #fff; text-align: left; }
+.ecr-approval tbody td { background: #fff; }
+.ecr-inline-label { font-weight: 700; text-decoration: underline; margin: 4px 0; }
+.ecr-sub { margin: 20px 0 8px; font-size: 15px; text-decoration: underline; }
+.ecr-preview-head { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
+.ecr-preview { background: #fff; border: 1px solid var(--ui-border); border-radius: 8px; padding: 20px; overflow-x: auto; margin-bottom: 40px; }
