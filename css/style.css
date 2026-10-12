@@ -231,3 +231,5 @@ body.admin { background: #f3f4f6; font-family: var(--ui-font); color: #111827; h
 .ecr-field-hint { font-weight: 400; font-size: 12px; margin-top: 2px; }
 .ecr-intro tbody th { background: #dbeafe; }
 .ecr-intro tbody td { background: #fff !important; }
+.ecr-window-warning { font-size: 13px; font-weight: 600; color: #b91c1c; background: #fee2e2; border-radius: 4px; padding: 4px 8px; margin: 4px 0; }
+.ecr-time option:disabled { color: #c0c4cc; }

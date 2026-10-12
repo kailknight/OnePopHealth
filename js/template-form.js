@@ -38,7 +38,9 @@ const PHTemplate = (() => {
   function windowError(w, label) {
     if (!w.startDate || !w.endDate) return '';
     const start = `${w.startDate}T${w.startTime || '00:00'}`, end = `${w.endDate}T${w.endTime || '00:00'}`;
-    return end <= start ? `${label}: end must be after start.` : '';
+    if (end > start) return '';
+    const what = w.endDate < w.startDate ? 'End date cannot be before the start date' : 'End time must be after the start time';
+    return label ? `${label}: ${what.toLowerCase()}.` : `⚠ ${what}.`;
   }
 
   // 24-hour time picker: hour and minute selects (browser time inputs may show AM/PM).
@@ -56,7 +58,18 @@ const PHTemplate = (() => {
     };
     hour.onchange = update;
     min.onchange = update;
-    return el('span', { class: 'ecr-timepair' }, [hour, el('span', { text: ':' }), min]);
+    const node = el('span', { class: 'ecr-timepair' }, [hour, el('span', { text: ':' }), min]);
+    Object.assign(node, { hour, min });
+    return node;
+  }
+
+  // Grey out end-time options at or before the start time (only matters when both are on the same day).
+  function limitEndTime(endPicker, w) {
+    const sameDay = w.startDate && w.startDate === w.endDate && w.startTime;
+    const [sh, sm] = sameDay ? w.startTime.split(':') : [];
+    for (const o of endPicker.hour.options) o.disabled = !!sameDay && o.value !== '' && o.value < sh;
+    const sameHour = sameDay && endPicker.hour.value === sh;
+    for (const o of endPicker.min.options) o.disabled = !!sameHour && o.value !== '' && o.value <= sm;
   }
 
   // ---------- email styling (inline only — Outlook ignores <style> blocks) ----------
@@ -103,21 +116,33 @@ const PHTemplate = (() => {
     function windowInput(key) {
       const w = data[key];
       const preview = el('div', { class: 'ecr-window-preview' });
-      const refresh = () => { save(); preview.textContent = formatRange(w) || 'Pick start and end date/time'; };
+      const warning = el('div', { class: 'ecr-window-warning' });
+      const pickers = {};
+      const refresh = () => {
+        save();
+        preview.textContent = formatRange(w) || 'Pick start and end date/time';
+        // The end calendar can't go earlier than the start date; end times are limited on the same day.
+        if (pickers.end) {
+          pickers.end.date.min = w.startDate || '';
+          limitEndTime(pickers.end.time, w);
+        }
+        warning.textContent = windowError(w, '');
+        warning.hidden = !warning.textContent;
+      };
       const point = (prefix, label) => {
         const date = el('input', { type: 'date' });
         date.value = w[prefix + 'Date'] || '';
         date.oninput = () => { w[prefix + 'Date'] = date.value; refresh(); };
-        return el('div', { class: 'ecr-window-point' }, [
-          el('span', { class: 'ecr-window-label', text: label }), date,
-          timePicker(w[prefix + 'Time'], (t) => { w[prefix + 'Time'] = t; refresh(); })
-        ]);
+        const time = timePicker(w[prefix + 'Time'], (t) => { w[prefix + 'Time'] = t; refresh(); });
+        pickers[prefix] = { date, time };
+        return el('div', { class: 'ecr-window-point' }, [el('span', { class: 'ecr-window-label', text: label }), date, time]);
       };
       const note = el('input', { placeholder: 'Note (optional), e.g. Broadcast Message has been sent to the users' });
       note.value = w.note || '';
       note.oninput = () => { w.note = note.value; save(); };
+      const nodes = [point('start', 'Start'), point('end', 'End'), preview, warning, note];
       refresh();
-      return [point('start', 'Start'), point('end', 'End'), preview, note];
+      return nodes;
     }
 
     const ctx = { data, save, input, esc, lines, ordinals, listItems, joinItems, blankOption, addressee };
