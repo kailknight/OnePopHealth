@@ -6,5 +6,9 @@
   {
     "username": "kim",
     "role": "Admin"
+  },
+  {
+    "username": "dhalia",
+    "role": "User"
   }
 ]
