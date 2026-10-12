@@ -14,8 +14,8 @@
       "id": "b1",
       "type": "hero",
       "props": {
-        "title": "Welcome to PopHealth",
-        "subtitle": "This page is fully configurable from the Admin Dashboard.",
+        "title": "Welcome to OnePopHealth Dashboard",
+        "subtitle": "",
         "background": "#2563eb",
         "color": "#ffffff",
         "image": "",
