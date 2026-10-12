@@ -1,0 +1,454 @@
+/* Admin dashboard: drag-and-drop page designer, user management, publishing. */
+(async () => {
+  const session = PH.requireAdmin();
+  if (!session) return;
+
+  const $ = (id) => document.getElementById(id);
+  const { el } = PH;
+
+  await PH.reconcileDrafts();
+  const state = {
+    layout: await PH.getLayout(),
+    users: await PH.getUsers(),
+    selectedId: null
+  };
+
+  // ---------- helpers ----------
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  function updateStatus() {
+    const dirty = PH.readLocal(PH.KEYS.layoutDraft) || PH.readLocal(PH.KEYS.usersDraft);
+    const s = $('draftStatus');
+    s.textContent = dirty ? '● Unpublished changes' : 'All changes published';
+    s.classList.toggle('clean', !dirty);
+  }
+
+  function saveLayout() {
+    PH.writeLocal(PH.KEYS.layoutDraft, state.layout);
+    updateStatus();
+  }
+  function saveUsers() {
+    PH.writeLocal(PH.KEYS.usersDraft, state.users);
+    updateStatus();
+  }
+
+  function download(name, data) {
+    const blob = new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: name });
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ---------- tabs ----------
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.onclick = () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
+      document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `view-${tab.dataset.view}`));
+    };
+  });
+  $('logoutBtn').onclick = () => { PH.clearSession(); location.href = 'index.html'; };
+
+  // ---------- designer: palette ----------
+  let dragPayload = null; // { kind: 'new', type } | { kind: 'move', id }
+
+  for (const [type, def] of Object.entries(PH.WIDGETS)) {
+    const item = el('div', { class: 'palette-item', draggable: 'true' }, [
+      el('span', { class: 'icon', text: def.icon }), el('span', { text: def.label })
+    ]);
+    item.addEventListener('dragstart', (e) => {
+      dragPayload = { kind: 'new', type };
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', type);
+    });
+    item.addEventListener('dragend', clearDropMarkers);
+    item.addEventListener('click', () => insertBlock(type, state.layout.blocks.length));
+    $('palette').append(item);
+  }
+
+  function newBlock(type) {
+    return { id: PH.uid(), type, props: PH.clone(PH.WIDGETS[type].defaults) };
+  }
+  function insertBlock(type, index) {
+    const block = newBlock(type);
+    state.layout.blocks.splice(index, 0, block);
+    state.selectedId = block.id;
+    saveLayout();
+    renderCanvas();
+    renderProps();
+  }
+  function indexOf(id) { return state.layout.blocks.findIndex(b => b.id === id); }
+
+  // ---------- designer: canvas ----------
+  const canvas = $('canvas');
+  let dropIndex = null;
+
+  function renderCanvas() {
+    PH.applyTheme(state.layout.theme, $('canvasFrame'));
+    $('canvasTitle').textContent = state.layout.theme.siteTitle;
+
+    if (!state.layout.blocks.length) {
+      canvas.replaceChildren(el('div', { class: 'canvas-empty', text: 'Drag blocks here to build the main page' }));
+      return;
+    }
+    canvas.replaceChildren(...state.layout.blocks.map((block, i) => {
+      const node = PH.renderBlock(block, state.layout.theme);
+      node.draggable = true;
+      if (block.id === state.selectedId) node.classList.add('selected');
+
+      const tools = el('div', { class: 'block-tools' }, [
+        el('span', { class: 'type', text: PH.WIDGETS[block.type]?.label || block.type }),
+        toolBtn('↑', 'Move up', () => move(i, i - 1)),
+        toolBtn('↓', 'Move down', () => move(i, i + 1)),
+        toolBtn('⧉', 'Duplicate', () => duplicate(i)),
+        toolBtn('✕', 'Delete', () => remove(i))
+      ]);
+      node.append(tools);
+
+      node.addEventListener('click', () => select(block.id));
+      node.addEventListener('dragstart', (e) => {
+        dragPayload = { kind: 'move', id: block.id };
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', block.id);
+        node.classList.add('dragging');
+      });
+      node.addEventListener('dragend', () => { node.classList.remove('dragging'); clearDropMarkers(); });
+      return node;
+    }));
+  }
+
+  function toolBtn(label, title, fn) {
+    const b = el('button', { type: 'button', title, text: label });
+    b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+    return b;
+  }
+
+  function clearDropMarkers() {
+    canvas.classList.remove('drag-over-end');
+    canvas.querySelectorAll('.drop-before, .drop-after').forEach(n =>
+      n.classList.remove('drop-before', 'drop-after', 'vertical', 'horizontal'));
+    dropIndex = null;
+  }
+
+  canvas.addEventListener('dragover', (e) => {
+    if (!dragPayload) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = dragPayload.kind === 'new' ? 'copy' : 'move';
+    clearDropMarkers();
+
+    const target = e.target.closest('.ph-block');
+    if (!target) {
+      dropIndex = state.layout.blocks.length;
+      canvas.classList.add('drag-over-end');
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    // Blocks that share a row (narrow) use left/right halves; full-width blocks use top/bottom.
+    const sideBySide = rect.width < canvas.clientWidth * 0.8;
+    const after = sideBySide ? e.clientX > rect.left + rect.width / 2 : e.clientY > rect.top + rect.height / 2;
+    target.classList.add(after ? 'drop-after' : 'drop-before', sideBySide ? 'horizontal' : 'vertical');
+    dropIndex = indexOf(target.dataset.id) + (after ? 1 : 0);
+  });
+  canvas.addEventListener('dragleave', (e) => {
+    if (!canvas.contains(e.relatedTarget)) clearDropMarkers();
+  });
+  canvas.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const payload = dragPayload, index = dropIndex;
+    dragPayload = null;
+    clearDropMarkers();
+    if (!payload || index === null) return;
+
+    if (payload.kind === 'new') {
+      insertBlock(payload.type, index);
+    } else {
+      const from = indexOf(payload.id);
+      move(from, from < index ? index - 1 : index);
+    }
+  });
+
+  // Clicking empty canvas space deselects (shows page settings).
+  canvas.addEventListener('click', (e) => { if (!e.target.closest('.ph-block')) select(null); });
+
+  function select(id) {
+    state.selectedId = id;
+    canvas.querySelectorAll('.ph-block').forEach(n => n.classList.toggle('selected', n.dataset.id === id));
+    renderProps();
+  }
+  function move(from, to) {
+    const blocks = state.layout.blocks;
+    if (from < 0 || to < 0 || to >= blocks.length || from === to) return;
+    blocks.splice(to, 0, blocks.splice(from, 1)[0]);
+    saveLayout();
+    renderCanvas();
+  }
+  function duplicate(i) {
+    const copy = { ...PH.clone(state.layout.blocks[i]), id: PH.uid() };
+    state.layout.blocks.splice(i + 1, 0, copy);
+    state.selectedId = copy.id;
+    saveLayout();
+    renderCanvas();
+    renderProps();
+  }
+  function remove(i) {
+    const [gone] = state.layout.blocks.splice(i, 1);
+    if (gone.id === state.selectedId) state.selectedId = null;
+    saveLayout();
+    renderCanvas();
+    renderProps();
+  }
+
+  // ---------- designer: properties ----------
+  function buildField(field, value, onChange) {
+    const id = 'f_' + field.key;
+    const wrap = el('div', { class: 'field' + (field.type === 'checkbox' ? ' checkbox' : '') });
+    let input;
+
+    if (field.type === 'textarea') {
+      input = el('textarea', { id });
+      input.value = value ?? '';
+      input.oninput = () => onChange(input.value);
+    } else if (field.type === 'select') {
+      input = el('select', { id });
+      for (const opt of field.options) {
+        const o = typeof opt === 'object' ? opt : { value: opt, label: opt };
+        const option = el('option', { value: o.value, text: o.label });
+        if (String(o.value) === String(value)) option.selected = true;
+        input.append(option);
+      }
+      input.onchange = () => {
+        const isNum = field.options.some(o => typeof o === 'object' && typeof o.value === 'number');
+        onChange(isNum ? Number(input.value) : input.value);
+      };
+    } else if (field.type === 'checkbox') {
+      input = el('input', { id, type: 'checkbox' });
+      input.checked = !!value;
+      input.onchange = () => onChange(input.checked);
+    } else if (field.type === 'number') {
+      input = el('input', { id, type: 'number', min: field.min, max: field.max });
+      input.value = value ?? '';
+      input.oninput = () => { if (input.value !== '') onChange(Number(input.value)); };
+    } else if (field.type === 'color') {
+      // Colour picker + free text (allows blank = "inherit" and any CSS colour).
+      const picker = el('input', { type: 'color' });
+      const text = el('input', { id, type: 'text', placeholder: 'default' });
+      text.value = value ?? '';
+      if (/^#[0-9a-f]{6}$/i.test(value)) picker.value = value;
+      picker.oninput = () => { text.value = picker.value; onChange(picker.value); };
+      text.oninput = () => {
+        if (/^#[0-9a-f]{6}$/i.test(text.value)) picker.value = text.value;
+        onChange(text.value.trim());
+      };
+      input = el('div', { class: 'color-row' }, [picker, text]);
+    } else {
+      input = el('input', { id, type: 'text' });
+      input.value = value ?? '';
+      input.oninput = () => onChange(input.value);
+    }
+
+    const label = el('label', { for: id, text: field.label });
+    if (field.type === 'checkbox') wrap.append(input, label);
+    else wrap.append(label, input);
+    return wrap;
+  }
+
+  function renderProps() {
+    const panel = $('props');
+    const block = state.layout.blocks.find(b => b.id === state.selectedId);
+
+    if (!block) {
+      $('propsTitle').textContent = 'Page settings';
+      const theme = state.layout.theme;
+      panel.replaceChildren(
+        el('p', { class: 'muted', style: { fontSize: '13px', marginTop: 0 }, text: 'Select a block on the page to edit it.' }),
+        ...PH.THEME_FIELDS.map(f => buildField(f, theme[f.key], (v) => {
+          theme[f.key] = v;
+          saveLayout();
+          renderCanvas();
+        }))
+      );
+      return;
+    }
+
+    const def = PH.WIDGETS[block.type];
+    $('propsTitle').textContent = def ? def.label : block.type;
+    const props = { ...(def?.defaults || {}), ...block.props };
+    const i = indexOf(block.id);
+    panel.replaceChildren(
+      ...(def?.fields || []).map(f => buildField(f, props[f.key], (v) => {
+        block.props[f.key] = v;
+        saveLayout();
+        renderCanvas();
+      })),
+      el('div', { class: 'props-actions' }, [
+        actionBtn('Duplicate', '', () => duplicate(i)),
+        actionBtn('Delete', 'btn-danger', () => remove(i)),
+        actionBtn('Done', '', () => select(null))
+      ])
+    );
+  }
+
+  function actionBtn(text, cls, fn) {
+    const b = el('button', { class: `btn btn-sm ${cls}`, type: 'button', text });
+    b.onclick = fn;
+    return b;
+  }
+
+  // ---------- users ----------
+  function renderUsers() {
+    $('userRows').replaceChildren(...state.users.map((u, i) => {
+      const role = el('select', {}, ['User', 'Admin'].map(r => {
+        const o = el('option', { text: r });
+        if (r.toLowerCase() === String(u.role).toLowerCase()) o.selected = true;
+        return o;
+      }));
+      role.style.width = 'auto';
+      role.onchange = () => {
+        if (u.role === 'Admin' && role.value !== 'Admin' && adminCount() === 1) {
+          role.value = 'Admin';
+          return showUserError('There must be at least one Admin.');
+        }
+        u.role = role.value;
+        saveUsers();
+      };
+      const del = actionBtn('Remove', 'btn-danger', () => {
+        if (String(u.role).toLowerCase() === 'admin' && adminCount() === 1) return showUserError('There must be at least one Admin.');
+        if (!confirm(`Remove user "${u.username}"?`)) return;
+        state.users.splice(i, 1);
+        saveUsers();
+        renderUsers();
+      });
+      return el('tr', {}, [el('td', { text: u.username }), el('td', {}, role), el('td', {}, del)]);
+    }));
+  }
+  function adminCount() { return state.users.filter(u => String(u.role).toLowerCase() === 'admin').length; }
+  function showUserError(msg) { $('userError').textContent = msg; }
+
+  $('addUserForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    showUserError('');
+    const username = $('newUsername').value.trim();
+    if (!username) return;
+    if (state.users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+      return showUserError('That username already exists.');
+    }
+    state.users.push({ username, role: $('newRole').value });
+    $('newUsername').value = '';
+    saveUsers();
+    renderUsers();
+    toast(`Added ${username}`);
+  });
+
+  // ---------- publish ----------
+  const gh = PH.readLocal(PH.KEYS.github) || {};
+  // Guess owner/repo when hosted at https://<owner>.github.io/<repo>/
+  const pagesHost = location.hostname.match(/^([^.]+)\.github\.io$/i);
+  $('ghOwner').value = gh.owner || (pagesHost ? pagesHost[1] : '');
+  $('ghRepo').value = gh.repo || (pagesHost ? (location.pathname.split('/')[1] || `${pagesHost[1]}.github.io`) : '');
+  $('ghBranch').value = gh.branch || 'main';
+  $('ghToken').value = gh.token || '';
+  $('ghRemember').checked = !!gh.token;
+
+  function log(msg) { $('publishLog').textContent += msg + '\n'; }
+
+  function toBase64(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+
+  async function putFile(cfg, path, data) {
+    const api = `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${path}`;
+    const headers = { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json' };
+
+    const existing = await fetch(`${api}?ref=${encodeURIComponent(cfg.branch)}`, { headers, cache: 'no-store' });
+    if (!existing.ok && existing.status !== 404) throw new Error(`${path}: ${existing.status} ${(await existing.json()).message}`);
+    const sha = existing.ok ? (await existing.json()).sha : undefined;
+
+    const res = await fetch(api, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        message: `Update ${path} via admin dashboard (${session.username})`,
+        content: toBase64(JSON.stringify(data, null, 2) + '\n'),
+        branch: cfg.branch,
+        sha
+      })
+    });
+    if (!res.ok) throw new Error(`${path}: ${res.status} ${(await res.json()).message}`);
+  }
+
+  $('publishBtn').onclick = async () => {
+    const cfg = {
+      owner: $('ghOwner').value.trim(),
+      repo: $('ghRepo').value.trim(),
+      branch: $('ghBranch').value.trim() || 'main',
+      token: $('ghToken').value.trim()
+    };
+    if (!cfg.owner || !cfg.repo || !cfg.token) { $('publishLog').textContent = 'Owner, repository and token are required.'; return; }
+    PH.writeLocal(PH.KEYS.github, { ...cfg, token: $('ghRemember').checked ? cfg.token : '' });
+
+    $('publishLog').textContent = '';
+    $('publishBtn').disabled = true;
+    try {
+      log('Publishing data/layout.json…');
+      await putFile(cfg, 'data/layout.json', state.layout);
+      log('Publishing data/users.json…');
+      await putFile(cfg, 'data/users.json', state.users);
+      log('✔ Published. GitHub Pages will update in about a minute.');
+      log('  Drafts in this browser are cleared automatically once the live site matches.');
+      toast('Published');
+    } catch (err) {
+      log('✖ ' + err.message);
+    } finally {
+      $('publishBtn').disabled = false;
+    }
+  };
+
+  $('exportLayoutBtn').onclick = () => download('layout.json', state.layout);
+  $('exportUsersBtn').onclick = () => download('users.json', state.users);
+  $('importLayoutBtn').onclick = () => $('importFile').click();
+  $('importFile').onchange = async () => {
+    const file = $('importFile').files[0];
+    $('importFile').value = '';
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (!data.theme || !Array.isArray(data.blocks)) throw new Error('Expected { theme, blocks }');
+      state.layout = data;
+      state.selectedId = null;
+      saveLayout();
+      renderCanvas();
+      renderProps();
+      toast('Layout imported');
+    } catch (err) {
+      alert('Invalid layout file: ' + err.message);
+    }
+  };
+  $('discardBtn').onclick = async () => {
+    if (!confirm('Discard all unpublished changes in this browser?')) return;
+    PH.writeLocal(PH.KEYS.layoutDraft, null);
+    PH.writeLocal(PH.KEYS.usersDraft, null);
+    state.layout = await PH.getPublishedLayout();
+    state.users = await PH.getPublishedUsers();
+    state.selectedId = null;
+    renderCanvas();
+    renderProps();
+    renderUsers();
+    updateStatus();
+    toast('Drafts discarded');
+  };
+
+  // ---------- init ----------
+  renderCanvas();
+  renderProps();
+  renderUsers();
+  updateStatus();
+})();

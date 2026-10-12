@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <form class="login-card" id="loginForm" autocomplete="on">
+      <h1 id="siteTitle">Sign in</h1>
+      <p class="muted">Enter your username to continue.</p>
+      <label for="username">Username</label>
+      <input id="username" name="username" required autofocus autocomplete="username">
+      <div class="error" id="error"></div>
+      <button class="btn btn-primary" type="submit">Continue</button>
+    </form>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    (async () => {
+      if (PH.getSession()) { location.replace('main.html'); return; }
+
+      try {
+        const layout = await PH.getLayout();
+        PH.applyTheme(layout.theme);
+        document.getElementById('siteTitle').textContent = layout.theme.siteTitle || 'Sign in';
+      } catch { /* theme is optional on the login page */ }
+
+      const form = document.getElementById('loginForm');
+      const error = document.getElementById('error');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        error.textContent = '';
+        const name = document.getElementById('username').value.trim().toLowerCase();
+        if (!name) return;
+        try {
+          const users = await PH.getUsers();
+          const user = users.find(u => u.username.toLowerCase() === name);
+          if (!user) { error.textContent = 'Unknown username.'; return; }
+          PH.setSession(user);
+          location.href = 'main.html';
+        } catch (err) {
+          error.textContent = 'Could not load users: ' + err.message;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

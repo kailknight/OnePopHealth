@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="admin">
+  <div class="admin-top">
+    <span class="title">Admin Dashboard</span>
+    <nav class="tabs">
+      <button class="tab active" data-view="designer">Page designer</button>
+      <button class="tab" data-view="users">Users</button>
+      <button class="tab" data-view="publish">Publish</button>
+    </nav>
+    <span class="spacer"></span>
+    <span class="draft-status clean" id="draftStatus">All changes published</span>
+    <a class="btn btn-sm" href="main.html">View main page</a>
+    <button class="btn btn-sm" id="logoutBtn">Log out</button>
+  </div>
+
+  <!-- Designer -->
+  <section class="view active" id="view-designer">
+    <div class="designer">
+      <aside class="panel">
+        <h3>Blocks</h3>
+        <div id="palette"></div>
+        <p class="palette-hint">Drag a block onto the page, or click it to add at the end. Drag blocks on the page to reorder.</p>
+      </aside>
+      <div class="canvas-wrap">
+        <div class="canvas-frame" id="canvasFrame">
+          <header class="site-header">
+            <div class="inner">
+              <div class="site-title" id="canvasTitle"></div>
+              <span class="user-chip">username · role</span>
+            </div>
+          </header>
+          <main class="page">
+            <div class="page-grid canvas" id="canvas"></div>
+          </main>
+        </div>
+      </div>
+      <aside class="panel right">
+        <h3 id="propsTitle">Page settings</h3>
+        <div id="props"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Users -->
+  <section class="view page-view" id="view-users">
+    <div class="box">
+      <h2>Users</h2>
+      <p class="muted">Users who can log in. Admins see the Admin Dashboard button.</p>
+      <form class="row" id="addUserForm">
+        <div class="field"><label>Username</label><input id="newUsername" required></div>
+        <div class="field"><label>Role</label>
+          <select id="newRole"><option>User</option><option>Admin</option></select>
+        </div>
+        <button class="btn btn-primary" type="submit">Add user</button>
+      </form>
+      <div class="error" id="userError"></div>
+      <table class="table">
+        <thead><tr><th>Username</th><th>Role</th><th></th></tr></thead>
+        <tbody id="userRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Publish -->
+  <section class="view page-view" id="view-publish">
+    <div class="box">
+      <h2>Publish to GitHub</h2>
+      <p class="muted">
+        Your edits are saved as a draft in this browser only. Publishing commits
+        <code>data/layout.json</code> and <code>data/users.json</code> to your repository so every visitor sees them.
+        GitHub Pages usually updates within about a minute.
+      </p>
+      <div class="row">
+        <div class="field"><label>Owner</label><input id="ghOwner" placeholder="your-github-username"></div>
+        <div class="field"><label>Repository</label><input id="ghRepo" placeholder="repo-name"></div>
+        <div class="field"><label>Branch</label><input id="ghBranch" placeholder="main"></div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label>Personal access token (fine-grained, "Contents: Read and write" on this repo only)</label>
+        <input id="ghToken" type="password" placeholder="github_pat_…" autocomplete="off">
+      </div>
+      <div class="field checkbox"><input type="checkbox" id="ghRemember"><label for="ghRemember">Remember token in this browser</label></div>
+      <div class="props-actions">
+        <button class="btn btn-primary" id="publishBtn">Publish now</button>
+      </div>
+      <div class="publish-log" id="publishLog"></div>
+    </div>
+
+    <div class="box">
+      <h2>Drafts &amp; backups</h2>
+      <p class="muted">Prefer not to use a token? Download the JSON files and commit them to the <code>data/</code> folder yourself.</p>
+      <div class="props-actions">
+        <button class="btn" id="exportLayoutBtn">Download layout.json</button>
+        <button class="btn" id="exportUsersBtn">Download users.json</button>
+        <button class="btn" id="importLayoutBtn">Import layout.json…</button>
+        <button class="btn btn-danger" id="discardBtn">Discard drafts</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/common.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <div class="site-title" id="siteTitle"></div>
+      <span class="user-chip" id="userChip"></span>
+      <a class="btn btn-primary" id="adminBtn" href="admin.html" hidden>Admin Dashboard</a>
+      <button class="btn" id="logoutBtn">Log out</button>
+    </div>
+  </header>
+  <div class="banner" id="draftBanner" hidden>
+    You are viewing unpublished draft changes (only visible in this browser).
+  </div>
+  <main class="page">
+    <div class="page-grid" id="page"></div>
+  </main>
+
+  <script src="js/common.js"></script>
+  <script>
+    (async () => {
+      const session = PH.requireLogin();
+      if (!session) return;
+
+      document.getElementById('userChip').textContent = `${session.username} · ${session.role}`;
+      if (PH.isAdmin(session)) document.getElementById('adminBtn').hidden = false;
+      document.getElementById('logoutBtn').onclick = () => { PH.clearSession(); location.href = 'index.html'; };
+
+      try {
+        await PH.reconcileDrafts();
+        const layout = await PH.getLayout();
+        PH.applyTheme(layout.theme);
+        document.title = layout.theme.siteTitle || 'Home';
+        document.getElementById('siteTitle').textContent = layout.theme.siteTitle;
+        document.getElementById('draftBanner').hidden = !PH.readLocal(PH.KEYS.layoutDraft);
+        PH.renderPage(layout, document.getElementById('page'));
+      } catch (err) {
+        document.getElementById('page').textContent = 'Could not load page: ' + err.message;
+      }
+    })();
+  </script>
+</body>
+</html>

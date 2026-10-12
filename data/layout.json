@@ -1,0 +1,89 @@
+{
+  "theme": {
+    "siteTitle": "PopHealth",
+    "background": "#f5f7fb",
+    "text": "#1f2937",
+    "accent": "#2563eb",
+    "headerBg": "#ffffff",
+    "headerText": "#1f2937",
+    "font": "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    "maxWidth": 1100
+  },
+  "blocks": [
+    {
+      "id": "b1",
+      "type": "hero",
+      "props": {
+        "title": "Welcome to PopHealth",
+        "subtitle": "This page is fully configurable from the Admin Dashboard.",
+        "background": "#2563eb",
+        "color": "#ffffff",
+        "image": "",
+        "buttonText": "Learn more",
+        "buttonUrl": "#about",
+        "width": 12,
+        "padding": 0
+      }
+    },
+    {
+      "id": "b2",
+      "type": "card",
+      "props": {
+        "title": "Reports",
+        "body": "View population health reports and trends.",
+        "image": "",
+        "background": "#ffffff",
+        "width": 4,
+        "padding": 24
+      }
+    },
+    {
+      "id": "b3",
+      "type": "card",
+      "props": {
+        "title": "Programs",
+        "body": "Browse active care programs and enrollment.",
+        "image": "",
+        "background": "#ffffff",
+        "width": 4,
+        "padding": 24
+      }
+    },
+    {
+      "id": "b4",
+      "type": "card",
+      "props": {
+        "title": "Resources",
+        "body": "Guides, documents and helpful links.",
+        "image": "",
+        "background": "#ffffff",
+        "width": 4,
+        "padding": 24
+      }
+    },
+    {
+      "id": "b5",
+      "type": "heading",
+      "props": {
+        "text": "About",
+        "level": "h2",
+        "align": "left",
+        "color": "",
+        "width": 12,
+        "padding": 8
+      }
+    },
+    {
+      "id": "b6",
+      "type": "text",
+      "props": {
+        "text": "Log in as \"admin\" and open the Admin Dashboard to drag, add and configure the blocks on this page.",
+        "align": "left",
+        "color": "",
+        "size": 16,
+        "width": 12,
+        "padding": 8
+      }
+    }
+  ]
+}
