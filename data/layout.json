@@ -29,7 +29,7 @@
       "id": "b2",
       "type": "card",
       "props": {
-        "title": "Reports",
+        "title": "Dynatrace Links",
         "body": "View population health reports and trends.",
         "image": "",
         "background": "#ffffff",
@@ -59,20 +59,6 @@
         "background": "#ffffff",
         "width": 4,
         "padding": 24
-      }
-    },
-    {
-      "id": "b8tqyqq9",
-      "type": "button",
-      "props": {
-        "text": "Click me",
-        "url": "#",
-        "background": "",
-        "color": "#ffffff",
-        "align": "left",
-        "newTab": false,
-        "width": 12,
-        "padding": 8
       }
     }
   ]
