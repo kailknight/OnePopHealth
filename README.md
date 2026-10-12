@@ -35,3 +35,7 @@ A static website for GitHub Pages with a username login, a configurable main pag
 GitHub Pages only serves static files, so this login is **not secure**. Anyone can type `admin`, and `data/users.json` is public. That's fine for demos, internal prototypes and personalising content. It is **not** suitable for protecting private or health data. For real authentication, put the site behind a real identity provider, such as Azure Static Web Apps auth, Cloudflare Access, Auth0 or Firebase Auth.
 
 The publish token never goes into the repo. It's kept in your browser only if you tick "Remember token".
+
+## Editing the code
+
+GitHub Pages lets browsers cache files for 10 minutes. When you change any file in `js/` or `css/`, bump the `?v=N` number on its `<script>` / `<link>` tags in `index.html`, `main.html` and `admin.html` so visitors don't get a mix of old and new files.
