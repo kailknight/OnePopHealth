@@ -4,11 +4,7 @@
     "role": "Admin"
   },
   {
-    "username": "jane",
-    "role": "User"
-  },
-  {
-    "username": "john",
-    "role": "User"
+    "username": "kim",
+    "role": "Admin"
   }
 ]
