@@ -60,6 +60,20 @@
         "width": 4,
         "padding": 24
       }
+    },
+    {
+      "id": "b5",
+      "type": "card",
+      "props": {
+        "title": "Emergency Change",
+        "body": "Fill in an ECR and generate the approval email for Outlook.",
+        "image": "",
+        "linkText": "Open template",
+        "linkUrl": "ecr.html",
+        "background": "#ffffff",
+        "width": 4,
+        "padding": 24
+      }
     }
   ]
 }

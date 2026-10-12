@@ -15,7 +15,7 @@
   const FIELDS = [
     { key: 'ecrNumber', label: 'Emergency Change Number', placeholder: 'e.g. ECR-673' },
     { key: 'incident', label: 'Incident Number (if any)' },
-    { key: 'changeType', label: 'Emergency Change Type' },
+    { key: 'changeType', label: 'Emergency Change Type', special: 'type' },
     { key: 'justification', label: 'Justification / Reason for change', special: 'justification' },
     { key: 'system', label: 'System Name' },
     { key: 'description', label: 'Change Description', multiline: true },
@@ -31,6 +31,28 @@
     { key: 'uat', label: 'UAT signoff', multiline: true },
     { key: 'implPlan', label: 'Implementation Plan', multiline: true }
   ];
+  // Emergency change type must be 1, 2 or 3; the stored value is "<category> – <reason>".
+  const CHANGE_TYPES = [
+    { name: '1. Urgent System Recovery', reasons: [
+      'a. Application/Server/DB/Switch Interface Hang or Slowness or Outage',
+      'b. Extreme Performance Degrading',
+      'c. DB Corruption/Error',
+      'd. High Utilization (Memory/CPU)',
+      'e. Hardware Failure',
+      'f. Immediate operational or clinical disruptions'
+    ] },
+    { name: '2. Emergency Situation', reasons: [
+      'a. Statutory/Ministry Implementation Requirement',
+      'b. Change Request to Support Pandemic or Hospital emergencies (e.g. Actual Mass Casualty, BCP)',
+      'c. Urgent Critical Security Patches or Cyber Incidents'
+    ] },
+    { name: '3. Unplanned Change', reasons: [
+      'a. All other changes (apart from urgent system recovery and emergency situations listed above) will be part of unplanned changes. These changes need to have proper justification for being raised as unplanned changes'
+    ] }
+  ];
+  const typeValue = (t, r) => `${t.name} – ${r}`;
+  const isUnplanned = () => String(data.changeType || '').startsWith('3.');
+
   const APPROVERS = ['Reporting Officer', 'Product Specialist', 'Service Lead', 'Project Director'];
   const STATUSES = ['Pending Approval', 'Approved', 'Rejected'];
 
@@ -120,6 +142,24 @@
     return node;
   }
 
+  function typeInput() {
+    const select = el('select', {}, [
+      blankOption('Select emergency change type (1, 2 or 3)…'),
+      ...CHANGE_TYPES.map(t => el('optgroup', { label: t.name },
+        t.reasons.map(r => el('option', { value: typeValue(t, r), text: t.name[0] + r }))))
+    ]);
+    // Keep a free-text value from an older draft selectable so it isn't silently lost.
+    if (data.changeType && ![...select.options].some(o => o.value === data.changeType)) {
+      select.append(el('option', { value: data.changeType, text: `${data.changeType} (old value — please reselect)` }));
+    }
+    select.value = data.changeType || '';
+    const hint = el('div', { class: 'ecr-type-hint', text: 'Unplanned change: provide proper justification under Justification / Reason for change.' });
+    const refresh = () => { hint.hidden = !isUnplanned(); };
+    select.onchange = () => { data.changeType = select.value; save(); refresh(); };
+    refresh();
+    return [select, hint];
+  }
+
   $('infoRows').replaceChildren(...FIELDS.map(f => {
     let cell;
     if (f.special === 'justification') {
@@ -131,6 +171,8 @@
       ]);
     } else if (f.special === 'window') {
       cell = el('td', {}, windowInput(f.key));
+    } else if (f.special === 'type') {
+      cell = el('td', {}, typeInput());
     } else {
       cell = el('td', {}, input(f.key, f));
     }
@@ -292,6 +334,8 @@
   $('createBtn').onclick = async () => {
     const missing = [];
     if (!String(data.ecrNumber || '').trim()) missing.push('Emergency Change Number');
+    if (!/^[123]\. /.test(data.changeType || '')) missing.push('Emergency Change Type (1, 2 or 3)');
+    if (isUnplanned() && !String(data.background || '').trim()) missing.push('Background (justification required for Unplanned Change)');
     if (!changeItems().length) missing.push('Changes');
     const to = addressee();
     if (!to) missing.push('at least one approver');
