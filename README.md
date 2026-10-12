@@ -8,6 +8,9 @@ A static website for GitHub Pages with a username login, a configurable main pag
 | Main | `main.html` | Renders `data/layout.json`; shows **Admin Dashboard** button for Admin users |
 | Admin | `admin.html` | Page designer, user management, publish |
 | Emergency Change | `ecr.html` | Fill in the ECR form, then **Create template** copies an Outlook-ready approval email |
+| Pre-Approved Change | `pac.html` | Same as above for pre-approved CRs (SCR) |
+
+Both templates share `js/template-form.js`; each page only has a small config (`js/ecr.js`, `js/pac.js`) listing its fields, email intro and checks.
 
 ## Deploy to GitHub Pages
 

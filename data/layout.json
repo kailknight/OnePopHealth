@@ -74,6 +74,20 @@
         "width": 4,
         "padding": 24
       }
+    },
+    {
+      "id": "b6",
+      "type": "card",
+      "props": {
+        "title": "Pre-Approved Change",
+        "body": "Fill in a pre-approved CR and generate the approval email for Outlook.",
+        "image": "",
+        "linkText": "Open template",
+        "linkUrl": "pac.html",
+        "background": "#ffffff",
+        "width": 4,
+        "padding": 24
+      }
     }
   ]
 }

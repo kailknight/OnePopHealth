@@ -226,3 +226,8 @@ body.admin { background: #f3f4f6; font-family: var(--ui-font); color: #111827; h
 .ecr-table select.ecr-time { width: 62px; }
 .ecr-window-preview { font-weight: 600; font-size: 13px; margin: 4px 0; color: #1e3a8a; }
 .ecr-type-hint { font-size: 12px; color: #92400e; background: #fef3c7; border-radius: 4px; padding: 4px 8px; margin-top: 4px; }
+.ecr-table tbody th { white-space: pre-line; }
+.ecr-table thead.align-left th { text-align: left; }
+.ecr-field-hint { font-weight: 400; font-size: 12px; margin-top: 2px; }
+.ecr-intro tbody th { background: #dbeafe; }
+.ecr-intro tbody td { background: #fff !important; }
