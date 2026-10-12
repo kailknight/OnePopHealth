@@ -24,10 +24,10 @@
   }
 
   function updateStatus() {
-    const dirty = PH.readLocal(PH.KEYS.layoutDraft) || PH.readLocal(PH.KEYS.usersDraft);
+    const draft = PH.draftState();
     const s = $('draftStatus');
-    s.textContent = dirty ? '● Unpublished changes' : 'All changes published';
-    s.classList.toggle('clean', !dirty);
+    s.textContent = { none: 'All changes published', deploying: 'Published — GitHub Pages updating…', unpublished: '● Unpublished changes' }[draft];
+    s.classList.toggle('clean', draft !== 'unpublished');
   }
 
   function saveLayout() {
@@ -402,7 +402,9 @@
       await putFile(cfg, 'data/layout.json', state.layout);
       log('Publishing data/users.json…');
       await putFile(cfg, 'data/users.json', state.users);
-      log('✔ Published. GitHub Pages will update in about a minute.');
+      PH.writeLocal(PH.KEYS.lastPublished, { layout: JSON.stringify(state.layout), users: JSON.stringify(state.users) });
+      updateStatus();
+      log('✔ Published. GitHub Pages usually updates within 1–5 minutes.');
       log('  Drafts in this browser are cleared automatically once the live site matches.');
       toast('Published');
     } catch (err) {

@@ -2,6 +2,7 @@
 const PH = (() => {
   const KEYS = {
     session: 'ph_session',
+    lastPublished: 'ph_last_published',
     layoutDraft: 'ph_layout_draft',
     usersDraft: 'ph_users_draft',
     github: 'ph_github'
@@ -42,6 +43,15 @@ const PH = (() => {
         if (JSON.stringify(draft) === JSON.stringify(await fetchJSON(path))) writeLocal(key, null);
       } catch { /* keep draft if published file is unreachable */ }
     }));
+  }
+
+  // 'none' | 'deploying' (published, waiting for GitHub Pages) | 'unpublished'
+  function draftState() {
+    const layout = readLocal(KEYS.layoutDraft), users = readLocal(KEYS.usersDraft);
+    if (!layout && !users) return 'none';
+    const last = readLocal(KEYS.lastPublished) || {};
+    const same = (draft, published) => !draft || JSON.stringify(draft) === published;
+    return same(layout, last.layout) && same(users, last.users) ? 'deploying' : 'unpublished';
   }
 
   // ---------- session ----------
@@ -303,7 +313,7 @@ const PH = (() => {
 
   return {
     KEYS, readLocal, writeLocal, fetchJSON,
-    getUsers, getPublishedUsers, getLayout, getPublishedLayout, reconcileDrafts,
+    getUsers, getPublishedUsers, getLayout, getPublishedLayout, reconcileDrafts, draftState,
     getSession, setSession, clearSession, isAdmin, requireLogin, requireAdmin,
     uid, clone, el, WIDGETS, THEME_FIELDS, applyTheme, renderBlock, renderPage
   };

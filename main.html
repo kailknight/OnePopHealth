@@ -38,7 +38,12 @@
         PH.applyTheme(layout.theme);
         document.title = layout.theme.siteTitle || 'Home';
         document.getElementById('siteTitle').textContent = layout.theme.siteTitle;
-        document.getElementById('draftBanner').hidden = !PH.readLocal(PH.KEYS.layoutDraft);
+        const banner = document.getElementById('draftBanner');
+        const draft = PH.draftState();
+        banner.hidden = draft === 'none';
+        if (draft === 'deploying') {
+          banner.textContent = '✔ Published. GitHub Pages is updating (can take a few minutes) — this message disappears once the live site is updated.';
+        }
         PH.renderPage(layout, document.getElementById('page'));
       } catch (err) {
         document.getElementById('page').textContent = 'Could not load page: ' + err.message;
