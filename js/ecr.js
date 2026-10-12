@@ -21,8 +21,8 @@
     { key: 'description', label: 'Change Description', multiline: true },
     { key: 'reasonNoCR', label: 'Reason for not raising Normal CR', multiline: true },
     { key: 'institutions', label: 'Institution(s) Affected', shade: true },
-    { key: 'deployWindow', label: 'Deployment window (Start and End Date/Time, including rollback)', multiline: true },
-    { key: 'downtime', label: 'Downtime Window (Start and End Date/Time, including rollback)', multiline: true },
+    { key: 'deployWindow', label: 'Deployment window (Start and End Date/Time, including rollback)', special: 'window' },
+    { key: 'downtime', label: 'Downtime Window (Start and End Date/Time, including rollback)', special: 'window' },
     { key: 'impact', label: 'Business Impact', multiline: true, shade: true },
     { key: 'dependencies', label: 'Indicate System Dependencies', multiline: true },
     { key: 'rollback', label: 'Is there roll-back plan?', multiline: true, shade: true },
@@ -38,7 +38,79 @@
     { approvals: APPROVERS.map(division => ({ division, name: '', status: STATUSES[0], attachment: '' })) },
     PH.readLocal(DRAFT_KEY) || {}
   );
+  // Older drafts stored the window fields as free text; keep that text as the note.
+  for (const f of FIELDS) {
+    if (f.special === 'window' && typeof data[f.key] !== 'object') data[f.key] = { note: data[f.key] || '' };
+  }
   const save = () => PH.writeLocal(DRAFT_KEY, data);
+
+  // The approver who still needs to approve: first one not yet Approved (the last one if all have).
+  const addressee = () => data.approvals.find(a => a.status !== 'Approved') || data.approvals[data.approvals.length - 1];
+
+  // ---------- date/time windows ----------
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const pad = (n) => String(n).padStart(2, '0');
+
+  // '2026-09-17', '21:00' -> '17-Sep-26 (Thu) 21:00'
+  function formatPoint(date, time) {
+    if (!date) return '';
+    const [y, m, d] = date.split('-').map(Number);
+    const day = DAYS[new Date(y, m - 1, d).getDay()];
+    return `${pad(d)}-${MONTHS[m - 1]}-${String(y).slice(-2)} (${day})${time ? ' ' + time : ''}`;
+  }
+  function formatRange(w) {
+    const start = formatPoint(w.startDate, w.startTime), end = formatPoint(w.endDate, w.endTime);
+    return start && end ? `${start} to ${end}` : start || end;
+  }
+  function windowError(w, label) {
+    if (!w.startDate || !w.endDate) return '';
+    const start = `${w.startDate}T${w.startTime || '00:00'}`, end = `${w.endDate}T${w.endTime || '00:00'}`;
+    return end <= start ? `${label}: end must be after start.` : '';
+  }
+
+  // el() drops empty attributes, so set the placeholder option's empty value directly.
+  function blankOption(text) { const o = el('option', { text }); o.value = ''; return o; }
+
+  // 24-hour time picker: hour and minute selects (browser time inputs may show AM/PM).
+  function timePicker(value, onChange) {
+    const [h, m] = (value || '').split(':');
+    const hour = el('select', { class: 'ecr-time', title: 'Hour (24h)' },
+      [blankOption('HH'),...Array.from({ length: 24 }, (_, i) => el('option', { text: pad(i) }))]);
+    const min = el('select', { class: 'ecr-time', title: 'Minute' },
+      [blankOption('MM'),...Array.from({ length: 12 }, (_, i) => el('option', { text: pad(i * 5) }))]);
+    hour.value = h || '';
+    min.value = m || '';
+    const update = () => {
+      if (hour.value && !min.value) min.value = '00';
+      onChange(hour.value ? `${hour.value}:${min.value}` : '');
+    };
+    hour.onchange = update;
+    min.onchange = update;
+    return el('span', { class: 'ecr-timepair' }, [hour, el('span', { text: ':' }), min]);
+  }
+
+  function windowInput(key) {
+    const w = data[key];
+    const preview = el('div', { class: 'ecr-window-preview' });
+    const refresh = () => { save(); preview.textContent = formatRange(w) || 'Pick start and end date/time'; };
+
+    const point = (prefix, label) => {
+      const date = el('input', { type: 'date' });
+      date.value = w[prefix + 'Date'] || '';
+      date.oninput = () => { w[prefix + 'Date'] = date.value; refresh(); };
+      return el('div', { class: 'ecr-window-point' }, [
+        el('span', { class: 'ecr-window-label', text: label }), date,
+        timePicker(w[prefix + 'Time'], (t) => { w[prefix + 'Time'] = t; refresh(); })
+      ]);
+    };
+    const note = el('input', { placeholder: 'Note (optional), e.g. includes 1h rollback' });
+    note.value = w.note || '';
+    note.oninput = () => { w.note = note.value; save(); };
+
+    refresh();
+    return [point('start', 'Start'), point('end', 'End'), preview, note];
+  }
 
   // ---------- form ----------
   function input(key, { multiline, placeholder, rows } = {}) {
@@ -57,6 +129,8 @@
         el('label', { class: 'ecr-inline-label', text: 'Changes: (one item per line)' }),
         input('changes', { multiline: true, rows: 3, placeholder: 'Microsoft Edge Chromium\nWindows Patch 2022 Server' })
       ]);
+    } else if (f.special === 'window') {
+      cell = el('td', {}, windowInput(f.key));
     } else {
       cell = el('td', {}, input(f.key, f));
     }
@@ -65,7 +139,7 @@
   }));
 
   function renderApprovals() {
-    $('approvalRows').replaceChildren(...data.approvals.map(a => {
+    $('approvalRows').replaceChildren(...data.approvals.map((a, i) => {
       const name = el('input', { placeholder: 'Name' });
       name.value = a.name;
       name.oninput = () => { a.name = name.value; save(); };
@@ -75,10 +149,29 @@
       const attach = el('input', { placeholder: 'optional' });
       attach.value = a.attachment;
       attach.oninput = () => { a.attachment = attach.value; save(); };
-      return el('tr', {}, [el('td', {}, name), el('td', { text: a.division }), el('td', {}, status), el('td', {}, attach)]);
+
+      let division = a.division;
+      if (a.custom) {
+        division = el('input', { placeholder: 'Division / role' });
+        division.value = a.division;
+        division.oninput = () => { a.division = division.value; save(); };
+      }
+      const remove = el('button', { class: 'ecr-remove', type: 'button', title: 'Remove approver', text: '✕' });
+      remove.onclick = () => { data.approvals.splice(i, 1); save(); renderApprovals(); };
+
+      return el('tr', {}, [
+        el('td', {}, name),
+        a.custom ? el('td', {}, division) : el('td', { text: division }),
+        el('td', {}, status), el('td', {}, attach), el('td', { class: 'ecr-x' }, remove)
+      ]);
     }));
   }
   renderApprovals();
+  $('addApproverBtn').onclick = () => {
+    data.approvals.push({ division: '', name: '', status: STATUSES[0], attachment: '', custom: true });
+    save();
+    renderApprovals();
+  };
 
   // ---------- email generation ----------
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -100,10 +193,11 @@
   const BLUE = '#5b9bd5', LIGHT = '#e9eef7', DARK = '#d0dcef';
 
   function buildEmailHtml() {
-    const ro = data.approvals[0];
+    const ro = addressee();
     const infoRows = FIELDS.map(f => {
       const value = f.special === 'justification'
         ? `<b><u>Background:</u></b><br>${lines(data.background)}<br><br><b><u>Changes:</u></b><br>${changeItems().map(esc).join('<br>')}`
+        : f.special === 'window' ? [esc(formatRange(data[f.key])), lines(data[f.key].note)].filter(Boolean).join('<br>')
         : lines(data[f.key]);
       return `<tr>
         <td style="${CELL}background:${BLUE};font-weight:bold;width:260px;">${esc(f.label)}</td>
@@ -142,7 +236,7 @@
   }
 
   function buildEmailText() {
-    const ro = data.approvals[0];
+    const ro = addressee();
     const out = [
       `Dear ${ro.name},`, '',
       `I would like to seek your email approval for Emergency Change ${data.ecrNumber} – To roll out VA scan issue fixes to resolve ${joinItems(changeItems())}.`, ''
@@ -151,7 +245,8 @@
       if (f.special === 'justification') {
         out.push(`${f.label}:`, `  Background: ${data.background || ''}`, `  Changes: ${changeItems().join('; ')}`);
       } else {
-        out.push(`${f.label}: ${data[f.key] || ''}`);
+        const value = f.special === 'window' ? [formatRange(data[f.key]), data[f.key].note].filter(Boolean).join(' – ') : data[f.key] || '';
+        out.push(`${f.label}: ${value}`);
       }
     }
     out.push('', 'Deployment Approval:');
@@ -198,9 +293,16 @@
     const missing = [];
     if (!String(data.ecrNumber || '').trim()) missing.push('Emergency Change Number');
     if (!changeItems().length) missing.push('Changes');
-    if (!data.approvals[0].name.trim()) missing.push('Reporting Officer name');
-    $('ecrError').textContent = missing.length ? `Please fill in: ${missing.join(', ')}.` : '';
-    if (missing.length) return;
+    const to = addressee();
+    if (!to) missing.push('at least one approver');
+    else if (!to.name.trim()) missing.push(`${to.division || 'approver'} name`);
+    const errors = [
+      missing.length ? `Please fill in: ${missing.join(', ')}.` : '',
+      windowError(data.deployWindow, 'Deployment window'),
+      windowError(data.downtime, 'Downtime window')
+    ].filter(Boolean);
+    $('ecrError').textContent = errors.join(' ');
+    if (errors.length) return;
 
     $('preview').innerHTML = buildEmailHtml();
     $('previewWrap').hidden = false;

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Emergency Change Template</title>
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
   <header class="site-header">
@@ -28,9 +28,11 @@
 
     <h3 class="ecr-sub">Deployment Approval:</h3>
     <table class="ecr-table ecr-approval">
-      <thead><tr><th>Name</th><th>Division/Synapxe</th><th>Status of Approval</th><th>Email Attachment</th></tr></thead>
+      <thead><tr><th>Name</th><th>Division/Synapxe</th><th>Status of Approval</th><th>Email Attachment</th><th class="ecr-x"></th></tr></thead>
       <tbody id="approvalRows"></tbody>
     </table>
+    <button class="btn btn-sm" id="addApproverBtn" type="button">+ Add approver</button>
+    <p class="muted ecr-hint">The email is addressed to the first approver whose status is not <b>Approved</b>.</p>
 
     <div class="error" id="ecrError"></div>
     <div class="props-actions">
@@ -51,6 +53,6 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/common.js?v=2"></script>
-  <script src="js/ecr.js?v=1"></script>
+  <script src="js/ecr.js?v=2"></script>
 </body>
 </html>
